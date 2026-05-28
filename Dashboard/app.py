@@ -8,7 +8,7 @@ import numpy as np
 
 # ── CONFIG ───────────────────────────────────────────────────────────────────
 
-DB = r"E:\Quarks&Quants\Fundamental\Financial Statements\Database"
+DB = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Database"))
 
 COMPANIES = sorted([d for d in os.listdir(DB) if os.path.isdir(os.path.join(DB, d))])
 
