@@ -174,67 +174,129 @@ tabs = st.tabs([
 # TAB 1 — SCORECARD
 # ═══════════════════════════════════════════════════════════════════════════════
 with tabs[0]:
-    st.header(f"{name}")
+    st.header(name)
 
     apl = D["annual_pl"]
     cf  = D["cash_flow"]
     rat = D["ratios"]
 
-    if apl is not None and len(apl) >= 2:
-        latest = apl.iloc[-1]
-        prev   = apl.iloc[-2]
+    # ── KPI Cards ─────────────────────────────────────────────
+    def _fmt_cr(v):
+        if abs(v) >= 100000:
+            return f"₹{v/100000:.2f}L Cr"
+        return f"₹{v:,.0f} Cr"
 
-        def _metric(col, label, suffix="", divisor=1):
+    def _delta_pct(v, p):
+        if p is None or pd.isna(p) or p == 0:
+            return "", True
+        d = (v - p) / abs(p) * 100
+        return f"{d:.1f}% YoY", d >= 0
+
+    kpis = []
+    if apl is not None and len(apl) >= 2:
+        latest, prev = apl.iloc[-1], apl.iloc[-2]
+        for col, label, fmt in [
+            ("Sales",      "Revenue",    "cr"),
+            ("Net Profit", "Net Profit", "cr"),
+            ("EPS in Rs",  "EPS (Rs)",   "num"),
+            ("OPM %",      "OPM",        "pct"),
+        ]:
             v = latest.get(col)
             p = prev.get(col)
             if v is None or pd.isna(v):
-                return
-            disp = f"₹{v/divisor:,.0f} Cr" if suffix == "cr" else (
-                   f"{v:.1f}%" if suffix == "pct" else f"{v:.2f}")
-            delta = f"{((v-p)/abs(p)*100):.1f}% YoY" if (p and not pd.isna(p) and p != 0) else None
-            st.metric(label, disp, delta)
+                continue
+            if fmt == "cr":
+                disp = _fmt_cr(v)
+                d, pos = _delta_pct(v, p)
+            elif fmt == "pct":
+                disp = f"{v:.1f}%"
+                d = f"{v-p:+.1f}pp YoY" if p is not None and not pd.isna(p) else ""
+                pos = (v >= p) if (p is not None and not pd.isna(p)) else True
+            else:
+                disp = f"Rs {v:.2f}"
+                d, pos = _delta_pct(v, p)
+            kpis.append((label, disp, d, pos))
 
-        c1, c2, c3, c4, c5, c6 = st.columns(6)
-        with c1: _metric("Sales",      "Revenue",    "cr")
-        with c2: _metric("Net Profit", "Net Profit", "cr")
-        with c3: _metric("EPS in Rs",  "EPS (₹)")
-        with c4: _metric("OPM %",      "OPM %",      "pct")
-        with c5:
-            if rat is not None and "ROCE %" in rat.columns:
-                rv = rat["ROCE %"].dropna()
-                if len(rv) >= 2:
-                    st.metric("ROCE %", f"{rv.iloc[-1]:.1f}%",
-                              f"{rv.iloc[-1] - rv.iloc[-2]:+.1f}pp")
-        with c6:
-            if cf is not None and "Free Cash Flow" in cf.columns:
-                fcf = cf["Free Cash Flow"].dropna()
-                if len(fcf) >= 2:
-                    st.metric("FCF (Cr)",
-                              f"₹{fcf.iloc[-1]:,.0f}",
-                              f"{((fcf.iloc[-1]-fcf.iloc[-2])/abs(fcf.iloc[-2])*100):.1f}% YoY"
-                              if fcf.iloc[-2] != 0 else None)
+    if rat is not None and "ROCE %" in rat.columns:
+        rv = rat["ROCE %"].dropna()
+        if len(rv) >= 2:
+            v, p = rv.iloc[-1], rv.iloc[-2]
+            kpis.append(("ROCE", f"{v:.1f}%", f"{v-p:+.1f}pp YoY", v >= p))
+
+    if cf is not None and "Free Cash Flow" in cf.columns:
+        fcf = cf["Free Cash Flow"].dropna()
+        if len(fcf) >= 2:
+            v, p = fcf.iloc[-1], fcf.iloc[-2]
+            d, pos = _delta_pct(v, p)
+            kpis.append(("Free Cash Flow", _fmt_cr(v), d, pos))
+
+    cards_html = ""
+    for label, value, delta, is_pos in kpis:
+        dc = "#22c55e" if is_pos else "#ef4444"
+        arrow = "↑" if is_pos else "↓"
+        delta_html = (
+            f'<div style="font-size:12px;color:{dc};margin-top:8px;">'
+            f'{arrow} {delta}</div>'
+        ) if delta else ""
+        cards_html += f"""
+        <div style="flex:1;min-width:0;
+                    background:rgba(128,128,128,0.07);
+                    border:1px solid rgba(128,128,128,0.16);
+                    border-radius:12px;padding:20px 14px;text-align:center;">
+            <div style="font-size:11px;color:#888;text-transform:uppercase;
+                        letter-spacing:0.1em;margin-bottom:10px;">{label}</div>
+            <div style="font-size:1.35rem;font-weight:700;line-height:1.25;
+                        word-break:break-word;">{value}</div>
+            {delta_html}
+        </div>"""
+
+    st.markdown(
+        f'<div style="display:flex;gap:12px;margin-bottom:4px;">{cards_html}</div>',
+        unsafe_allow_html=True,
+    )
 
     st.divider()
 
-    # ── Growth CAGR cards
+    # ── Growth Snapshot Table ──────────────────────────────────
     st.subheader("Growth Snapshot")
+
+    growth_cols = [
+        ("Sales CAGR",  "sales_growth"),
+        ("Profit CAGR", "profit_growth"),
+        ("Price CAGR",  "price_cagr"),
+        ("ROE",         "roe_summary"),
+    ]
     periods = [("10 Years:", "10Y"), ("5 Years:", "5Y"), ("3 Years:", "3Y")]
-    gc1, gc2, gc3, gc4 = st.columns(4)
 
-    def _cagr_col(col, tbl, label):
-        col.markdown(f"**{label}**")
-        for period, pl in periods:
-            v = get_cagr(ticker, tbl, period)
-            col.metric(pl, f"{v:.0f}%" if v is not None else "–")
+    header_cells = "".join(
+        f'<th style="padding:10px 20px;text-align:center;font-size:12px;'
+        f'text-transform:uppercase;letter-spacing:0.09em;color:#888;'
+        f'border-bottom:1px solid rgba(128,128,128,0.2);">{lbl}</th>'
+        for lbl, _ in growth_cols
+    )
+    header_row = (
+        f'<tr><th style="padding:10px 20px;border-bottom:1px solid '
+        f'rgba(128,128,128,0.2);"></th>{header_cells}</tr>'
+    )
 
-    with gc1: _cagr_col(gc1, "sales_growth",  "Sales CAGR")
-    with gc2: _cagr_col(gc2, "profit_growth", "Profit CAGR")
-    with gc3: _cagr_col(gc3, "price_cagr",    "Price CAGR")
-    with gc4:
-        gc4.markdown("**ROE**")
-        for period, pl in periods:
-            v = get_cagr(ticker, "roe_summary", period)
-            gc4.metric(pl, f"{v:.0f}%" if v is not None else "–")
+    body_rows = ""
+    for period_key, period_label in periods:
+        cells = f'<td style="padding:14px 20px;font-size:13px;color:#888;font-weight:500;">{period_label}</td>'
+        for _, tbl in growth_cols:
+            v = get_cagr(ticker, tbl, period_key)
+            val = f"{v:.0f}%" if v is not None else "—"
+            c = "#22c55e" if (v is not None and v > 0) else ("#ef4444" if (v is not None and v < 0) else "#888")
+            cells += (
+                f'<td style="padding:14px 20px;text-align:center;font-size:22px;'
+                f'font-weight:700;color:{c};">{val}</td>'
+            )
+        body_rows += f"<tr>{cells}</tr>"
+
+    st.markdown(
+        f'<table style="width:100%;border-collapse:collapse;">'
+        f'<thead>{header_row}</thead><tbody>{body_rows}</tbody></table>',
+        unsafe_allow_html=True,
+    )
 
     st.divider()
 
