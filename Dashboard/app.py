@@ -37,7 +37,7 @@ ORANGE = "#ff7f0e"
 
 st.set_page_config(
     page_title="Sensex Fundamentals",
-    page_icon="📊",
+    page_icon=None,
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -146,7 +146,7 @@ def screener_df() -> pd.DataFrame:
 # ── SIDEBAR ───────────────────────────────────────────────────────────────────
 
 with st.sidebar:
-    st.title("📊 Sensex Fundamentals")
+    st.title("Sensex Fundamentals")
     ticker = st.selectbox(
         "Select Company",
         COMPANIES,
@@ -161,13 +161,13 @@ name = NAMES.get(ticker, ticker)
 # ── TABS ──────────────────────────────────────────────────────────────────────
 
 tabs = st.tabs([
-    "🏠 Scorecard",
-    "📈 P&L",
-    "🏦 Balance Sheet",
-    "💵 Cash Flow",
-    "⚙️ Efficiency",
-    "👥 Ownership",
-    "🔍 Sensex Screener",
+    "Scorecard",
+    "P&L",
+    "Balance Sheet",
+    "Cash Flow",
+    "Efficiency",
+    "Ownership",
+    "Sensex Screener",
 ])
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -227,11 +227,11 @@ with tabs[0]:
             v = get_cagr(ticker, tbl, period)
             col.metric(pl, f"{v:.0f}%" if v is not None else "–")
 
-    with gc1: _cagr_col(gc1, "sales_growth",  "📦 Sales CAGR")
-    with gc2: _cagr_col(gc2, "profit_growth", "💰 Profit CAGR")
-    with gc3: _cagr_col(gc3, "price_cagr",    "📉 Price CAGR")
+    with gc1: _cagr_col(gc1, "sales_growth",  "Sales CAGR")
+    with gc2: _cagr_col(gc2, "profit_growth", "Profit CAGR")
+    with gc3: _cagr_col(gc3, "price_cagr",    "Price CAGR")
     with gc4:
-        gc4.markdown("**🔄 ROE**")
+        gc4.markdown("**ROE**")
         for period, pl in periods:
             v = get_cagr(ticker, "roe_summary", period)
             gc4.metric(pl, f"{v:.0f}%" if v is not None else "–")
