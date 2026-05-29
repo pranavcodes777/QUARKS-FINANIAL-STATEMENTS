@@ -13,27 +13,28 @@ DB = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "
 COMPANIES = sorted([d for d in os.listdir(DB) if os.path.isdir(os.path.join(DB, d))])
 
 NAMES = {
-    "ADANIPORTS": "Adani Ports",      "ASIANPAINT": "Asian Paints",
-    "AXISBANK": "Axis Bank",          "BAJFINANCE": "Bajaj Finance",
-    "BAJAJFINSV": "Bajaj Finserv",    "BHARTIARTL": "Bharti Airtel",
-    "HCLTECH": "HCL Technologies",    "HDFCBANK": "HDFC Bank",
+    "ADANIPORTS": "Adani Ports",       "ASIANPAINT": "Asian Paints",
+    "AXISBANK": "Axis Bank",           "BAJFINANCE": "Bajaj Finance",
+    "BAJAJFINSV": "Bajaj Finserv",     "BHARTIARTL": "Bharti Airtel",
+    "HCLTECH": "HCL Technologies",     "HDFCBANK": "HDFC Bank",
     "HINDUNILVR": "Hindustan Unilever","ICICIBANK": "ICICI Bank",
-    "INDUSINDBK": "IndusInd Bank",    "INFY": "Infosys",
-    "ITC": "ITC",                     "JSWSTEEL": "JSW Steel",
+    "INDUSINDBK": "IndusInd Bank",     "INFY": "Infosys",
+    "ITC": "ITC",                      "JSWSTEEL": "JSW Steel",
     "KOTAKBANK": "Kotak Mahindra Bank","LT": "Larsen & Toubro",
-    "M&M": "Mahindra & Mahindra",     "MARUTI": "Maruti Suzuki",
-    "NTPC": "NTPC",                   "POWERGRID": "Power Grid",
-    "RELIANCE": "Reliance Industries","SBIN": "State Bank of India",
-    "SUNPHARMA": "Sun Pharma",        "TCS": "TCS",
-    "TATAMOTORS": "Tata Motors",      "TATASTEEL": "Tata Steel",
-    "TECHM": "Tech Mahindra",         "TITAN": "Titan",
-    "ULTRACEMCO": "UltraTech Cement", "WIPRO": "Wipro",
+    "M&M": "Mahindra & Mahindra",      "MARUTI": "Maruti Suzuki",
+    "NTPC": "NTPC",                    "POWERGRID": "Power Grid",
+    "RELIANCE": "Reliance Industries", "SBIN": "State Bank of India",
+    "SUNPHARMA": "Sun Pharma",         "TCS": "TCS",
+    "TATAMOTORS": "Tata Motors",       "TATASTEEL": "Tata Steel",
+    "TECHM": "Tech Mahindra",          "TITAN": "Titan",
+    "ULTRACEMCO": "UltraTech Cement",  "WIPRO": "Wipro",
 }
 
-BLUE   = "#1f77b4"
-GREEN  = "#2ca02c"
-RED    = "#d62728"
-ORANGE = "#ff7f0e"
+BLUE   = "#4C9BE8"
+GREEN  = "#27AE60"
+RED    = "#E74C3C"
+ORANGE = "#F39C12"
+PURPLE = "#8E44AD"
 
 st.set_page_config(
     page_title="Sensex Fundamentals",
@@ -73,7 +74,6 @@ def load_raw(ticker: str, name: str) -> pd.DataFrame | None:
 
 
 def to_df(ticker: str, name: str) -> pd.DataFrame | None:
-    """Returns transposed DataFrame: index = date periods, columns = metrics."""
     raw = load_raw(ticker, name)
     if raw is None:
         return None
@@ -116,7 +116,7 @@ def screener_df() -> pd.DataFrame:
             if apl is not None:
                 for src, dst in [
                     ("Sales", "Revenue (Cr)"), ("Net Profit", "Net Profit (Cr)"),
-                    ("OPM %", "OPM %"), ("EPS in Rs", "EPS (₹)"),
+                    ("OPM %", "OPM %"), ("EPS in Rs", "EPS (Rs)"),
                 ]:
                     if src in apl.columns:
                         r[dst] = round(float(apl[src].dropna().iloc[-1]), 1)
@@ -124,15 +124,12 @@ def screener_df() -> pd.DataFrame:
                     rev = float(apl["Sales"].dropna().iloc[-1])
                     pat = float(apl["Net Profit"].dropna().iloc[-1])
                     r["NPM %"] = round(pat / rev * 100, 1) if rev else None
-
             cf = to_df(t, "cash_flow")
             if cf is not None and "Free Cash Flow" in cf.columns:
                 r["FCF (Cr)"] = round(float(cf["Free Cash Flow"].dropna().iloc[-1]), 0)
-
             rat = to_df(t, "ratios")
             if rat is not None and "ROCE %" in rat.columns:
                 r["ROCE %"] = round(float(rat["ROCE %"].dropna().iloc[-1]), 1)
-
             r["Sales CAGR 5Y (%)"]  = get_cagr(t, "sales_growth",  "5 Years:")
             r["Profit CAGR 5Y (%)"] = get_cagr(t, "profit_growth", "5 Years:")
             r["Price CAGR 3Y (%)"]  = get_cagr(t, "price_cagr",    "3 Years:")
@@ -141,6 +138,62 @@ def screener_df() -> pd.DataFrame:
             pass
         rows.append(r)
     return pd.DataFrame(rows)
+
+
+# ── CHART STYLE HELPER ────────────────────────────────────────────────────────
+
+def _style(fig, *, yt="", yt2="", height=400, legend=True, barmode=None):
+    """Apply consistent professional styling to any Plotly figure."""
+    layout = dict(
+        height=height,
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        hovermode="x unified",
+        hoverlabel=dict(
+            bgcolor="rgba(15,22,32,0.92)",
+            font_size=12,
+            bordercolor="rgba(255,255,255,0.10)",
+            namelength=-1,
+        ),
+        font=dict(family="Inter, sans-serif", size=12),
+        xaxis=dict(
+            showgrid=False,
+            zeroline=False,
+            title="",
+            tickfont=dict(size=11),
+            showline=True,
+            linecolor="rgba(128,128,128,0.2)",
+        ),
+        yaxis=dict(
+            gridcolor="rgba(128,128,128,0.10)",
+            zeroline=False,
+            title=yt,
+            tickfont=dict(size=11),
+            showline=False,
+        ),
+        legend=dict(
+            orientation="h", y=1.06, x=0,
+            bgcolor="rgba(0,0,0,0)", bordercolor="rgba(0,0,0,0)",
+            font=dict(size=11),
+        ) if legend else dict(visible=False),
+        margin=dict(t=40, b=30, l=10, r=10),
+    )
+    if not legend:
+        layout["showlegend"] = False
+    if barmode:
+        layout["barmode"] = barmode
+    fig.update_layout(**layout)
+    if yt2:
+        fig.update_layout(
+            yaxis2=dict(
+                gridcolor="rgba(0,0,0,0)",
+                zeroline=False,
+                title=yt2,
+                tickfont=dict(size=11),
+                showline=False,
+            )
+        )
+    return fig
 
 
 # ── SIDEBAR ───────────────────────────────────────────────────────────────────
@@ -153,7 +206,7 @@ with st.sidebar:
         format_func=lambda x: f"{x}  —  {NAMES.get(x, x)}",
         index=COMPANIES.index("RELIANCE") if "RELIANCE" in COMPANIES else 0,
     )
-    st.caption(f"Screener.in data  |  {len(COMPANIES)} companies")
+    st.caption(f"Screener.in  |  {len(COMPANIES)} companies")
 
 D    = company_data(ticker)
 name = NAMES.get(ticker, ticker)
@@ -161,13 +214,8 @@ name = NAMES.get(ticker, ticker)
 # ── TABS ──────────────────────────────────────────────────────────────────────
 
 tabs = st.tabs([
-    "Scorecard",
-    "P&L",
-    "Balance Sheet",
-    "Cash Flow",
-    "Efficiency",
-    "Ownership",
-    "Sensex Screener",
+    "Scorecard", "P&L", "Balance Sheet",
+    "Cash Flow", "Efficiency", "Ownership", "Sensex Screener",
 ])
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -180,7 +228,6 @@ with tabs[0]:
     cf  = D["cash_flow"]
     rat = D["ratios"]
 
-    # ── KPI Cards ─────────────────────────────────────────────
     def _fmt_cr(v):
         if abs(v) >= 100000:
             return f"₹{v/100000:.2f}L Cr"
@@ -198,7 +245,7 @@ with tabs[0]:
         for col, label, fmt in [
             ("Sales",      "Revenue",    "cr"),
             ("Net Profit", "Net Profit", "cr"),
-            ("EPS in Rs",  "EPS (Rs)",   "num"),
+            ("EPS in Rs",  "EPS",        "num"),
             ("OPM %",      "OPM",        "pct"),
         ]:
             v = latest.get(col)
@@ -213,7 +260,7 @@ with tabs[0]:
                 d = f"{v-p:+.1f}pp YoY" if p is not None and not pd.isna(p) else ""
                 pos = (v >= p) if (p is not None and not pd.isna(p)) else True
             else:
-                disp = f"Rs {v:.2f}"
+                disp = f"₹{v:.2f}"
                 d, pos = _delta_pct(v, p)
             kpis.append((label, disp, d, pos))
 
@@ -232,20 +279,19 @@ with tabs[0]:
 
     cards_html = ""
     for label, value, delta, is_pos in kpis:
-        dc = "#22c55e" if is_pos else "#ef4444"
+        dc    = "#27AE60" if is_pos else "#E74C3C"
         arrow = "↑" if is_pos else "↓"
         delta_html = (
-            f'<div style="font-size:12px;color:{dc};margin-top:8px;">'
+            f'<div style="font-size:11px;color:{dc};margin-top:8px;letter-spacing:0.02em;">'
             f'{arrow} {delta}</div>'
         ) if delta else ""
         cards_html += f"""
-        <div style="flex:1;min-width:0;
-                    background:rgba(128,128,128,0.07);
-                    border:1px solid rgba(128,128,128,0.16);
-                    border-radius:12px;padding:20px 14px;text-align:center;">
-            <div style="font-size:11px;color:#888;text-transform:uppercase;
-                        letter-spacing:0.1em;margin-bottom:10px;">{label}</div>
-            <div style="font-size:1.35rem;font-weight:700;line-height:1.25;
+        <div style="flex:1;min-width:0;background:rgba(128,128,128,0.06);
+                    border:1px solid rgba(128,128,128,0.14);border-radius:12px;
+                    padding:20px 14px;text-align:center;">
+            <div style="font-size:10px;color:#888;text-transform:uppercase;
+                        letter-spacing:0.12em;margin-bottom:10px;">{label}</div>
+            <div style="font-size:1.3rem;font-weight:700;line-height:1.25;
                         word-break:break-word;">{value}</div>
             {delta_html}
         </div>"""
@@ -257,7 +303,7 @@ with tabs[0]:
 
     st.divider()
 
-    # ── Growth Snapshot Table ──────────────────────────────────
+    # ── Growth Snapshot Table
     st.subheader("Growth Snapshot")
 
     growth_cols = [
@@ -269,25 +315,27 @@ with tabs[0]:
     periods = [("10 Years:", "10Y"), ("5 Years:", "5Y"), ("3 Years:", "3Y")]
 
     header_cells = "".join(
-        f'<th style="padding:10px 20px;text-align:center;font-size:12px;'
-        f'text-transform:uppercase;letter-spacing:0.09em;color:#888;'
-        f'border-bottom:1px solid rgba(128,128,128,0.2);">{lbl}</th>'
+        f'<th style="padding:10px 24px;text-align:center;font-size:11px;'
+        f'text-transform:uppercase;letter-spacing:0.10em;color:#888;'
+        f'border-bottom:1px solid rgba(128,128,128,0.18);">{lbl}</th>'
         for lbl, _ in growth_cols
     )
     header_row = (
-        f'<tr><th style="padding:10px 20px;border-bottom:1px solid '
-        f'rgba(128,128,128,0.2);"></th>{header_cells}</tr>'
+        f'<tr><th style="padding:10px 24px;border-bottom:1px solid '
+        f'rgba(128,128,128,0.18);width:60px;"></th>{header_cells}</tr>'
     )
-
     body_rows = ""
     for period_key, period_label in periods:
-        cells = f'<td style="padding:14px 20px;font-size:13px;color:#888;font-weight:500;">{period_label}</td>'
+        cells = (
+            f'<td style="padding:14px 24px;font-size:12px;color:#666;'
+            f'font-weight:600;letter-spacing:0.05em;">{period_label}</td>'
+        )
         for _, tbl in growth_cols:
             v = get_cagr(ticker, tbl, period_key)
             val = f"{v:.0f}%" if v is not None else "—"
-            c = "#22c55e" if (v is not None and v > 0) else ("#ef4444" if (v is not None and v < 0) else "#888")
+            c = "#27AE60" if (v is not None and v > 0) else ("#E74C3C" if (v is not None and v < 0) else "#888")
             cells += (
-                f'<td style="padding:14px 20px;text-align:center;font-size:22px;'
+                f'<td style="padding:14px 24px;text-align:center;font-size:22px;'
                 f'font-weight:700;color:{c};">{val}</td>'
             )
         body_rows += f"<tr>{cells}</tr>"
@@ -300,32 +348,43 @@ with tabs[0]:
 
     st.divider()
 
-    # ── 12-year sparklines
+    # ── Trend sparklines
     if apl is not None:
         st.subheader("12-Year Trend")
         s1, s2, s3 = st.columns(3)
 
-        def _spark(col_obj, df, col, title, color):
-            if col in df.columns:
-                fig = px.bar(x=df.index, y=df[col], title=title,
-                             color_discrete_sequence=[color])
-                fig.update_layout(height=240, showlegend=False,
-                                  margin=dict(t=30, b=0, l=0, r=0))
-                col_obj.plotly_chart(fig, use_container_width=True)
+        def _spark(col_obj, df, col, title, color, fmt="cr"):
+            if col not in df.columns:
+                return
+            ht = "₹%{y:,.0f} Cr<extra></extra>" if fmt == "cr" else "%{y:.1f}%<extra></extra>"
+            fig = go.Figure(go.Bar(
+                x=df.index, y=df[col],
+                marker_color=color, opacity=0.85,
+                hovertemplate=ht,
+            ))
+            _style(fig, height=240, legend=False)
+            fig.update_layout(title=dict(text=title, font_size=13), margin=dict(t=36, b=20))
+            col_obj.plotly_chart(fig, use_container_width=True)
 
-        _spark(s1, apl, "Sales",      "Revenue (₹ Cr)", BLUE)
-        _spark(s2, apl, "Net Profit", "Net Profit (₹ Cr)", GREEN)
+        _spark(s1, apl, "Sales",      "Revenue", BLUE)
+        _spark(s2, apl, "Net Profit", "Net Profit", GREEN)
         if rat is not None and "ROCE %" in rat.columns:
-            fig_r = px.line(x=rat.index, y=rat["ROCE %"],
-                            title="ROCE %", markers=True)
-            fig_r.update_layout(height=240, margin=dict(t=30, b=0, l=0, r=0))
+            fig_r = go.Figure(go.Scatter(
+                x=rat.index, y=rat["ROCE %"],
+                mode="lines+markers",
+                line=dict(color=BLUE, width=2),
+                marker=dict(size=5),
+                hovertemplate="%{y:.1f}%<extra></extra>",
+            ))
+            _style(fig_r, yt="ROCE %", height=240, legend=False)
+            fig_r.update_layout(title=dict(text="ROCE %", font_size=13), margin=dict(t=36, b=20))
             s3.plotly_chart(fig_r, use_container_width=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # TAB 2 — P&L
 # ═══════════════════════════════════════════════════════════════════════════════
 with tabs[1]:
-    st.header(f"{name} — P&L Analysis")
+    st.header(f"{name} — P&L")
     apl = D["annual_pl"]
     qpl = D["quarterly_pl"]
 
@@ -333,63 +392,77 @@ with tabs[1]:
     pl   = apl if view == "Annual" else qpl
 
     if pl is not None:
-        st.subheader(f"{'Annual' if view == 'Annual' else 'Quarterly'} Revenue & Profit")
+        # Revenue + Net Profit bars + OPM line
         fig = make_subplots(specs=[[{"secondary_y": True}]])
         if "Sales" in pl.columns:
-            fig.add_trace(go.Bar(x=pl.index, y=pl["Sales"], name="Revenue",
-                                 marker_color=BLUE, opacity=0.85), secondary_y=False)
+            fig.add_trace(go.Bar(
+                x=pl.index, y=pl["Sales"], name="Revenue",
+                marker_color=BLUE, opacity=0.85,
+                hovertemplate="₹%{y:,.0f} Cr<extra></extra>",
+            ), secondary_y=False)
         if "Net Profit" in pl.columns:
-            fig.add_trace(go.Bar(x=pl.index, y=pl["Net Profit"], name="Net Profit",
-                                 marker_color=GREEN, opacity=0.85), secondary_y=False)
+            fig.add_trace(go.Bar(
+                x=pl.index, y=pl["Net Profit"], name="Net Profit",
+                marker_color=GREEN, opacity=0.85,
+                hovertemplate="₹%{y:,.0f} Cr<extra></extra>",
+            ), secondary_y=False)
         if "OPM %" in pl.columns:
-            fig.add_trace(go.Scatter(x=pl.index, y=pl["OPM %"], name="OPM %",
-                                     mode="lines+markers",
-                                     line=dict(color=ORANGE, width=2)),
-                          secondary_y=True)
-        fig.update_layout(height=420, barmode="group", hovermode="x unified",
-                          legend=dict(orientation="h", y=1.1))
-        fig.update_yaxes(title_text="₹ Crores", secondary_y=False)
-        fig.update_yaxes(title_text="OPM %", secondary_y=True)
+            fig.add_trace(go.Scatter(
+                x=pl.index, y=pl["OPM %"], name="OPM %",
+                mode="lines+markers", line=dict(color=ORANGE, width=2),
+                marker=dict(size=5),
+                hovertemplate="%{y:.1f}%<extra></extra>",
+            ), secondary_y=True)
+        _style(fig, yt="₹ Crores", yt2="OPM %", height=420, barmode="group")
+        fig.update_yaxes(showgrid=True,  gridcolor="rgba(128,128,128,0.10)", secondary_y=False)
+        fig.update_yaxes(showgrid=False, secondary_y=True)
         st.plotly_chart(fig, use_container_width=True)
 
         # Margins
-        st.subheader("Margins")
         pl2 = pl.copy()
         if "Net Profit" in pl2.columns and "Sales" in pl2.columns:
             pl2["NPM %"] = (pl2["Net Profit"] / pl2["Sales"] * 100).round(1)
         margin_cols = [c for c in ["OPM %", "NPM %"] if c in pl2.columns]
         if margin_cols:
+            st.subheader("Margins")
             fig2 = go.Figure()
-            for col, color in zip(margin_cols, [ORANGE, GREEN]):
-                fig2.add_trace(go.Scatter(x=pl2.index, y=pl2[col], name=col,
-                                          mode="lines+markers", line=dict(width=2, color=color)))
-            fig2.update_layout(height=300, hovermode="x unified", yaxis_title="%",
-                               legend=dict(orientation="h"))
+            for col, color, label in zip(margin_cols, [ORANGE, GREEN], ["OPM %", "NPM %"]):
+                fig2.add_trace(go.Scatter(
+                    x=pl2.index, y=pl2[col], name=label,
+                    mode="lines+markers", line=dict(width=2, color=color),
+                    marker=dict(size=5),
+                    hovertemplate="%{y:.1f}%<extra></extra>",
+                ))
+            _style(fig2, yt="%", height=300)
             st.plotly_chart(fig2, use_container_width=True)
 
         # EPS
         if "EPS in Rs" in pl.columns:
-            st.subheader("EPS (₹)")
-            fig3 = px.bar(x=pl.index, y=pl["EPS in Rs"],
-                          color_discrete_sequence=[BLUE])
-            fig3.update_layout(height=280, yaxis_title="₹")
+            st.subheader("Earnings Per Share")
+            fig3 = go.Figure(go.Bar(
+                x=pl.index, y=pl["EPS in Rs"],
+                marker_color=BLUE, opacity=0.85,
+                hovertemplate="₹%{y:.2f}<extra></extra>",
+            ))
+            _style(fig3, yt="₹ per share", height=280, legend=False)
             st.plotly_chart(fig3, use_container_width=True)
 
-        # YoY growth
+        # YoY growth (annual only)
         if view == "Annual" and "Sales" in apl.columns and "Net Profit" in apl.columns:
-            st.subheader("YoY Growth %")
+            st.subheader("YoY Growth")
             yoy = pd.DataFrame({
-                "Revenue Growth": apl["Sales"].pct_change() * 100,
-                "Profit Growth":  apl["Net Profit"].pct_change() * 100,
+                "Revenue":    apl["Sales"].pct_change() * 100,
+                "Net Profit": apl["Net Profit"].pct_change() * 100,
             }).dropna().round(1)
             fig4 = go.Figure()
-            fig4.add_trace(go.Bar(x=yoy.index, y=yoy["Revenue Growth"],
-                                  name="Revenue", marker_color=BLUE, opacity=0.8))
-            fig4.add_trace(go.Bar(x=yoy.index, y=yoy["Profit Growth"],
-                                  name="Net Profit", marker_color=GREEN, opacity=0.8))
-            fig4.add_hline(y=0, line_dash="dash", line_color="black")
-            fig4.update_layout(height=320, barmode="group", hovermode="x unified",
-                               yaxis_title="%", legend=dict(orientation="h"))
+            for col, color in zip(["Revenue", "Net Profit"], [BLUE, GREEN]):
+                fig4.add_trace(go.Bar(
+                    x=yoy.index, y=yoy[col], name=col,
+                    marker_color=color, opacity=0.85,
+                    hovertemplate="%{y:.1f}%<extra></extra>",
+                ))
+            fig4.add_hline(y=0, line_dash="dot", line_color="rgba(128,128,128,0.4)", line_width=1)
+            _style(fig4, yt="%", height=320, barmode="group")
             st.plotly_chart(fig4, use_container_width=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -400,61 +473,83 @@ with tabs[2]:
     bs = D["balance_sheet"]
 
     if bs is not None:
-        # Asset composition stacked bar
+        # Asset composition stacked
         st.subheader("Asset Composition")
         asset_cols = [c for c in ["Fixed Assets", "CWIP", "Investments", "Other Assets"]
                       if c in bs.columns]
         if asset_cols:
             fig = go.Figure()
-            for col, color in zip(asset_cols, [BLUE, ORANGE, GREEN, "purple"]):
-                fig.add_trace(go.Bar(x=bs.index, y=bs[col], name=col, marker_color=color))
-            fig.update_layout(barmode="stack", height=380, hovermode="x unified",
-                              yaxis_title="₹ Crores", legend=dict(orientation="h", y=1.1))
+            for col, color in zip(asset_cols, [BLUE, ORANGE, GREEN, PURPLE]):
+                fig.add_trace(go.Bar(
+                    x=bs.index, y=bs[col], name=col, marker_color=color,
+                    hovertemplate="₹%{y:,.0f} Cr<extra></extra>",
+                ))
+            _style(fig, yt="₹ Crores", height=380, barmode="stack")
             st.plotly_chart(fig, use_container_width=True)
 
         c1, c2 = st.columns(2)
 
-        # Debt vs Equity
         with c1:
             st.subheader("Debt vs Equity")
             eq_cols = [c for c in ["Equity Capital", "Reserves"] if c in bs.columns]
             equity  = bs[eq_cols].sum(axis=1)
             fig2 = go.Figure()
-            fig2.add_trace(go.Bar(x=bs.index, y=equity,
-                                  name="Equity + Reserves", marker_color=GREEN))
+            fig2.add_trace(go.Bar(
+                x=bs.index, y=equity, name="Equity + Reserves",
+                marker_color=GREEN,
+                hovertemplate="₹%{y:,.0f} Cr<extra></extra>",
+            ))
             if "Borrowings" in bs.columns:
-                fig2.add_trace(go.Bar(x=bs.index, y=bs["Borrowings"],
-                                      name="Borrowings", marker_color=RED))
-            fig2.update_layout(height=340, barmode="group", hovermode="x unified",
-                               yaxis_title="₹ Crores", legend=dict(orientation="h"))
+                fig2.add_trace(go.Bar(
+                    x=bs.index, y=bs["Borrowings"], name="Borrowings",
+                    marker_color=RED,
+                    hovertemplate="₹%{y:,.0f} Cr<extra></extra>",
+                ))
+            _style(fig2, yt="₹ Crores", height=340, barmode="group")
             st.plotly_chart(fig2, use_container_width=True)
 
-        # D/E ratio
         with c2:
             st.subheader("Debt / Equity Ratio")
             if "Borrowings" in bs.columns:
                 de = (bs["Borrowings"] / equity.replace(0, np.nan)).round(2)
-                fig3 = px.line(x=de.index, y=de, markers=True,
-                               color_discrete_sequence=[RED])
-                fig3.add_hline(y=1, line_dash="dash", line_color="gray",
-                               annotation_text="D/E = 1")
-                fig3.update_layout(height=340, yaxis_title="D/E Ratio")
+                fig3 = go.Figure(go.Scatter(
+                    x=de.index, y=de, mode="lines+markers",
+                    line=dict(color=RED, width=2), marker=dict(size=5),
+                    hovertemplate="%{y:.2f}x<extra></extra>",
+                    name="D/E",
+                ))
+                fig3.add_hline(
+                    y=1, line_dash="dot",
+                    line_color="rgba(128,128,128,0.4)", line_width=1,
+                    annotation_text="1x", annotation_font_size=11,
+                    annotation_font_color="#888",
+                )
+                _style(fig3, yt="D/E Ratio", height=340, legend=False)
                 st.plotly_chart(fig3, use_container_width=True)
 
-        # CWIP — capex signal
+        # CWIP
         if "CWIP" in bs.columns:
-            st.subheader("Capital Work-in-Progress (Capex Signal)")
-            fig4 = px.bar(x=bs.index, y=bs["CWIP"],
-                          color_discrete_sequence=[ORANGE])
-            fig4.update_layout(height=280, yaxis_title="₹ Crores")
+            st.subheader("Capital Work-in-Progress")
+            fig4 = go.Figure(go.Bar(
+                x=bs.index, y=bs["CWIP"], marker_color=ORANGE,
+                hovertemplate="₹%{y:,.0f} Cr<extra></extra>",
+                name="CWIP",
+            ))
+            _style(fig4, yt="₹ Crores", height=280, legend=False)
             st.plotly_chart(fig4, use_container_width=True)
 
-        # Total Assets growth
+        # Total Assets
         if "Total Assets" in bs.columns:
-            st.subheader("Total Assets Growth")
-            fig5 = px.area(x=bs.index, y=bs["Total Assets"],
-                           color_discrete_sequence=[BLUE])
-            fig5.update_layout(height=260, yaxis_title="₹ Crores")
+            st.subheader("Total Assets")
+            fig5 = go.Figure(go.Scatter(
+                x=bs.index, y=bs["Total Assets"],
+                mode="lines", fill="tozeroy",
+                line=dict(color=BLUE, width=2),
+                fillcolor="rgba(76,155,232,0.12)",
+                hovertemplate="₹%{y:,.0f} Cr<extra></extra>",
+                name="Total Assets",
+            ))
+            _style(fig5, yt="₹ Crores", height=260, legend=False)
             st.plotly_chart(fig5, use_container_width=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -466,18 +561,21 @@ with tabs[3]:
     apl = D["annual_pl"]
 
     if cf is not None:
-        st.subheader("Cash Flow Components")
+        # OCF / ICF / CFF grouped bars
         fig = go.Figure()
         for col, color, short in [
-            ("Cash from Operating Activity", GREEN,  "OCF"),
-            ("Cash from Investing Activity", RED,    "ICF"),
-            ("Cash from Financing Activity", BLUE,   "CFF"),
+            ("Cash from Operating Activity", GREEN,  "Operating (OCF)"),
+            ("Cash from Investing Activity", RED,    "Investing (ICF)"),
+            ("Cash from Financing Activity", BLUE,   "Financing (CFF)"),
         ]:
             if col in cf.columns:
-                fig.add_trace(go.Bar(x=cf.index, y=cf[col],
-                                     name=short, marker_color=color, opacity=0.85))
-        fig.update_layout(height=400, barmode="group", hovermode="x unified",
-                          yaxis_title="₹ Crores", legend=dict(orientation="h", y=1.1))
+                fig.add_trace(go.Bar(
+                    x=cf.index, y=cf[col], name=short,
+                    marker_color=color, opacity=0.85,
+                    hovertemplate="₹%{y:,.0f} Cr<extra></extra>",
+                ))
+        fig.add_hline(y=0, line_dash="dot", line_color="rgba(128,128,128,0.4)", line_width=1)
+        _style(fig, yt="₹ Crores", height=400, barmode="group")
         st.plotly_chart(fig, use_container_width=True)
 
         c1, c2 = st.columns(2)
@@ -487,21 +585,32 @@ with tabs[3]:
             if "Free Cash Flow" in cf.columns:
                 fcf    = cf["Free Cash Flow"].dropna()
                 colors = [GREEN if v >= 0 else RED for v in fcf]
-                fig2   = go.Figure(go.Bar(x=fcf.index, y=fcf, marker_color=colors))
-                fig2.add_hline(y=0, line_dash="dash", line_color="black")
-                fig2.update_layout(height=320, yaxis_title="₹ Crores",
-                                   hovermode="x unified")
+                fig2   = go.Figure(go.Bar(
+                    x=fcf.index, y=fcf, marker_color=colors,
+                    hovertemplate="₹%{y:,.0f} Cr<extra></extra>",
+                    name="FCF",
+                ))
+                fig2.add_hline(y=0, line_dash="dot", line_color="rgba(128,128,128,0.4)", line_width=1)
+                _style(fig2, yt="₹ Crores", height=320, legend=False)
                 st.plotly_chart(fig2, use_container_width=True)
 
         with c2:
-            st.subheader("CFO / Operating Profit %")
+            st.subheader("Cash Conversion Quality (OCF / Op. Profit)")
             if "CFO/OP" in cf.columns:
                 cfoop = cf["CFO/OP"].dropna()
-                fig3  = px.bar(x=cfoop.index, y=cfoop,
-                               color_discrete_sequence=[BLUE])
-                fig3.add_hline(y=100, line_dash="dash", line_color="green",
-                               annotation_text="100%")
-                fig3.update_layout(height=320, yaxis_title="%")
+                bar_colors = [GREEN if v >= 100 else ORANGE for v in cfoop]
+                fig3  = go.Figure(go.Bar(
+                    x=cfoop.index, y=cfoop, marker_color=bar_colors,
+                    hovertemplate="%{y:.0f}%<extra></extra>",
+                    name="CFO/OP",
+                ))
+                fig3.add_hline(
+                    y=100, line_dash="dot",
+                    line_color="rgba(128,128,128,0.4)", line_width=1,
+                    annotation_text="100%", annotation_font_size=11,
+                    annotation_font_color="#888",
+                )
+                _style(fig3, yt="% of Operating Profit", height=320, legend=False)
                 st.plotly_chart(fig3, use_container_width=True)
 
         # Earnings quality
@@ -512,14 +621,18 @@ with tabs[3]:
             fig4   = go.Figure()
             fig4.add_trace(go.Scatter(
                 x=list(common), y=list(apl.loc[common, "Net Profit"]),
-                name="Net Profit", mode="lines+markers", line=dict(color=BLUE)))
+                name="Net Profit", mode="lines+markers",
+                line=dict(color=BLUE, width=2), marker=dict(size=5),
+                hovertemplate="₹%{y:,.0f} Cr<extra></extra>",
+            ))
             fig4.add_trace(go.Scatter(
                 x=list(common),
                 y=list(cf.loc[common, "Cash from Operating Activity"]),
-                name="OCF", mode="lines+markers", line=dict(color=GREEN)))
-            fig4.update_layout(height=340, hovermode="x unified",
-                               yaxis_title="₹ Crores",
-                               legend=dict(orientation="h"))
+                name="Operating Cash Flow", mode="lines+markers",
+                line=dict(color=GREEN, width=2), marker=dict(size=5),
+                hovertemplate="₹%{y:,.0f} Cr<extra></extra>",
+            ))
+            _style(fig4, yt="₹ Crores", height=340)
             st.plotly_chart(fig4, use_container_width=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -533,43 +646,65 @@ with tabs[4]:
         c1, c2 = st.columns(2)
 
         with c1:
+            st.subheader("ROCE %")
             if "ROCE %" in rat.columns:
-                fig = px.line(x=rat.index, y=rat["ROCE %"], title="ROCE %",
-                              markers=True, color_discrete_sequence=[BLUE])
-                fig.update_layout(height=320, yaxis_title="%")
+                roce = rat["ROCE %"].dropna()
+                fig = go.Figure(go.Scatter(
+                    x=roce.index, y=roce,
+                    mode="lines+markers",
+                    line=dict(color=BLUE, width=2.5),
+                    marker=dict(size=6),
+                    fill="tozeroy", fillcolor="rgba(76,155,232,0.08)",
+                    hovertemplate="%{y:.1f}%<extra></extra>",
+                    name="ROCE",
+                ))
+                _style(fig, yt="Return on Capital Employed (%)", height=320, legend=False)
                 st.plotly_chart(fig, use_container_width=True)
 
         with c2:
+            st.subheader("Cash Conversion Cycle")
             if "Cash Conversion Cycle" in rat.columns:
                 ccc    = rat["Cash Conversion Cycle"].dropna()
                 colors = [RED if v > 0 else GREEN for v in ccc]
-                fig2   = go.Figure(go.Bar(x=ccc.index, y=ccc, marker_color=colors))
-                fig2.add_hline(y=0, line_dash="dash")
-                fig2.update_layout(height=320,
-                                   title="Cash Conversion Cycle (days)",
-                                   yaxis_title="Days")
+                fig2   = go.Figure(go.Bar(
+                    x=ccc.index, y=ccc, marker_color=colors,
+                    hovertemplate="%{y:.0f} days<extra></extra>",
+                    name="CCC",
+                ))
+                fig2.add_hline(y=0, line_dash="dot", line_color="rgba(128,128,128,0.4)", line_width=1)
+                _style(fig2, yt="Days", height=320, legend=False)
                 st.plotly_chart(fig2, use_container_width=True)
 
-        st.subheader("Working Capital Breakdown (Days)")
+        # Working capital breakdown — all three on shared axis
+        st.subheader("Working Capital Breakdown")
         wc_cols = [c for c in ["Debtor Days", "Inventory Days", "Days Payable"]
                    if c in rat.columns]
         if wc_cols:
             fig3 = go.Figure()
             for col, color in zip(wc_cols, [BLUE, ORANGE, RED]):
-                fig3.add_trace(go.Scatter(x=rat.index, y=rat[col], name=col,
-                                          mode="lines+markers",
-                                          line=dict(width=2, color=color)))
-            fig3.update_layout(height=360, hovermode="x unified", yaxis_title="Days",
-                               legend=dict(orientation="h"))
+                fig3.add_trace(go.Scatter(
+                    x=rat.index, y=rat[col], name=col,
+                    mode="lines+markers",
+                    line=dict(width=2, color=color),
+                    marker=dict(size=6),
+                    hovertemplate="%{y:.0f} days<extra></extra>",
+                ))
+            _style(fig3, yt="Days", height=360)
+            fig3.update_yaxes(rangemode="tozero")
             st.plotly_chart(fig3, use_container_width=True)
 
+        # Net Working Capital Days
         if "Working Capital Days" in rat.columns:
+            st.subheader("Net Working Capital Days")
             wcd    = rat["Working Capital Days"].dropna()
             colors = [RED if v > 0 else GREEN for v in wcd]
-            fig4   = go.Figure(go.Bar(x=wcd.index, y=wcd, marker_color=colors))
-            fig4.add_hline(y=0, line_dash="dash")
-            fig4.update_layout(height=280, title="Net Working Capital Days",
-                               yaxis_title="Days")
+            fig4   = go.Figure(go.Bar(
+                x=wcd.index, y=wcd, marker_color=colors,
+                hovertemplate="%{y:.0f} days<extra></extra>",
+                name="WC Days",
+            ))
+            fig4.add_hline(y=0, line_dash="dot", line_color="rgba(128,128,128,0.4)", line_width=1)
+            _style(fig4, yt="Days", height=280, legend=False)
             st.plotly_chart(fig4, use_container_width=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -587,47 +722,65 @@ with tabs[5]:
         holders = [c for c in ["Promoters", "FIIs", "DIIs", "Government", "Public"]
                    if c in sh.columns]
 
-        st.subheader("Shareholding Composition")
+        # Stacked area shareholding
         fig = go.Figure()
-        sh_colors = [BLUE, GREEN, ORANGE, RED, "purple"]
+        sh_colors = [BLUE, GREEN, ORANGE, RED, PURPLE]
         for col, color in zip(holders, sh_colors):
             fig.add_trace(go.Scatter(
                 x=sh.index, y=sh[col], name=col,
-                mode="lines", stackgroup="one", line=dict(width=0.5),
-                fillcolor=color))
-        fig.update_layout(height=400, hovermode="x unified", yaxis_title="%",
-                          legend=dict(orientation="h", y=1.1))
+                mode="lines", stackgroup="one",
+                line=dict(width=0.5, color=color),
+                fillcolor=color.replace(")", ",0.5)").replace("rgb", "rgba") if color.startswith("rgb") else color,
+                hovertemplate="%{y:.2f}%<extra></extra>",
+            ))
+        _style(fig, yt="Shareholding %", height=400)
         st.plotly_chart(fig, use_container_width=True)
 
         c1, c2 = st.columns(2)
 
         with c1:
-            st.subheader("FII vs DII Shift")
+            st.subheader("FII vs DII")
             if "FIIs" in sh.columns and "DIIs" in sh.columns:
                 fig2 = go.Figure()
-                fig2.add_trace(go.Scatter(x=sh.index, y=sh["FIIs"],
-                                          name="FII", mode="lines+markers",
-                                          line=dict(color=GREEN, width=2)))
-                fig2.add_trace(go.Scatter(x=sh.index, y=sh["DIIs"],
-                                          name="DII", mode="lines+markers",
-                                          line=dict(color=BLUE, width=2)))
-                fig2.update_layout(height=320, hovermode="x unified", yaxis_title="%",
-                                   legend=dict(orientation="h"))
+                fig2.add_trace(go.Scatter(
+                    x=sh.index, y=sh["FIIs"], name="FII",
+                    mode="lines+markers", line=dict(color=GREEN, width=2),
+                    marker=dict(size=5),
+                    hovertemplate="%{y:.2f}%<extra></extra>",
+                ))
+                fig2.add_trace(go.Scatter(
+                    x=sh.index, y=sh["DIIs"], name="DII",
+                    mode="lines+markers", line=dict(color=BLUE, width=2),
+                    marker=dict(size=5),
+                    hovertemplate="%{y:.2f}%<extra></extra>",
+                ))
+                _style(fig2, yt="Shareholding %", height=320)
                 st.plotly_chart(fig2, use_container_width=True)
 
         with c2:
-            st.subheader("Promoter Holding %")
+            st.subheader("Promoter Holding")
             if "Promoters" in sh.columns:
-                fig3 = px.area(x=sh.index, y=sh["Promoters"],
-                               color_discrete_sequence=[ORANGE])
-                fig3.update_layout(height=320, yaxis_title="%")
+                fig3 = go.Figure(go.Scatter(
+                    x=sh.index, y=sh["Promoters"],
+                    mode="lines+markers",
+                    line=dict(color=ORANGE, width=2),
+                    marker=dict(size=5),
+                    fill="tozeroy", fillcolor="rgba(243,156,18,0.10)",
+                    hovertemplate="%{y:.2f}%<extra></extra>",
+                    name="Promoters",
+                ))
+                _style(fig3, yt="Shareholding %", height=320, legend=False)
                 st.plotly_chart(fig3, use_container_width=True)
 
         if "No. of Shareholders" in sh.columns:
             st.subheader("Number of Shareholders")
             ns = sh["No. of Shareholders"].dropna()
-            fig4 = px.bar(x=ns.index, y=ns, color_discrete_sequence=[BLUE])
-            fig4.update_layout(height=280, yaxis_title="Count")
+            fig4 = go.Figure(go.Bar(
+                x=ns.index, y=ns, marker_color=BLUE,
+                hovertemplate="%{y:,.0f}<extra></extra>",
+                name="Shareholders",
+            ))
+            _style(fig4, yt="Count", height=280, legend=False)
             st.plotly_chart(fig4, use_container_width=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -636,35 +789,30 @@ with tabs[5]:
 with tabs[6]:
     st.header("Sensex 30 — Screener")
 
-    with st.spinner("Loading all 30 companies..."):
+    with st.spinner("Loading all companies..."):
         sdf = screener_df()
 
     METRIC_COLS = [c for c in [
         "Revenue (Cr)", "Net Profit (Cr)", "OPM %", "NPM %", "ROCE %",
-        "FCF (Cr)", "EPS (₹)", "Sales CAGR 5Y (%)", "Profit CAGR 5Y (%)",
+        "FCF (Cr)", "EPS (Rs)", "Sales CAGR 5Y (%)", "Profit CAGR 5Y (%)",
         "Price CAGR 3Y (%)", "ROE (last yr)",
     ] if c in sdf.columns]
 
-    # ── Sortable table
-    st.subheader("All Companies — Key Metrics")
+    st.subheader("All Companies")
     col_sort, col_asc = st.columns([3, 1])
-    sort_by  = col_sort.selectbox("Sort by", METRIC_COLS)
-    asc      = col_asc.checkbox("Ascending", value=False)
+    sort_by = col_sort.selectbox("Sort by", METRIC_COLS)
+    asc     = col_asc.checkbox("Ascending", value=False)
 
     display = sdf.sort_values(sort_by, ascending=asc).reset_index(drop=True)
-
     st.dataframe(
         display[["Company", "Ticker"] + METRIC_COLS],
-        use_container_width=True,
-        height=600,
-        hide_index=True,
+        use_container_width=True, height=560, hide_index=True,
     )
 
     st.divider()
 
-    # ── Bar chart
-    st.subheader("Compare All Companies")
-    metric_bar = st.selectbox("Metric", METRIC_COLS, key="bar_metric")
+    # Bar comparison
+    metric_bar = st.selectbox("Compare by", METRIC_COLS, key="bar_metric")
     bar_data   = sdf[["Company", metric_bar]].dropna().sort_values(metric_bar)
     bar_colors = [GREEN if v >= 0 else RED for v in bar_data[metric_bar]]
 
@@ -673,25 +821,57 @@ with tabs[6]:
         y=bar_data["Company"],
         orientation="h",
         marker_color=bar_colors,
+        hovertemplate="%{y}  —  %{x:.1f}<extra></extra>",
     ))
-    fig_b.update_layout(height=700, margin=dict(l=200), xaxis_title=metric_bar)
+    fig_b.update_layout(
+        height=700,
+        plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+        hovermode="closest",
+        margin=dict(l=180, t=10, b=30, r=10),
+        xaxis=dict(showgrid=True, gridcolor="rgba(128,128,128,0.10)",
+                   zeroline=False, title=metric_bar, tickfont_size=11),
+        yaxis=dict(showgrid=False, zeroline=False, title="", tickfont_size=11),
+        hoverlabel=dict(bgcolor="rgba(15,22,32,0.92)", font_size=12,
+                        bordercolor="rgba(255,255,255,0.10)"),
+    )
     st.plotly_chart(fig_b, use_container_width=True)
 
     st.divider()
 
-    # ── Scatter: any X vs any Y
-    st.subheader("Scatter — Any Metric vs Any Metric")
+    # Scatter
+    st.subheader("Scatter — Growth vs Returns")
     s1, s2 = st.columns(2)
-    x_ax = s1.selectbox("X axis", METRIC_COLS,
-                         index=METRIC_COLS.index("Sales CAGR 5Y (%)") if "Sales CAGR 5Y (%)" in METRIC_COLS else 0,
-                         key="sc_x")
-    y_ax = s2.selectbox("Y axis", METRIC_COLS,
-                         index=METRIC_COLS.index("ROCE %") if "ROCE %" in METRIC_COLS else 1,
-                         key="sc_y")
+    x_ax = s1.selectbox(
+        "X axis", METRIC_COLS,
+        index=METRIC_COLS.index("Sales CAGR 5Y (%)") if "Sales CAGR 5Y (%)" in METRIC_COLS else 0,
+        key="sc_x",
+    )
+    y_ax = s2.selectbox(
+        "Y axis", METRIC_COLS,
+        index=METRIC_COLS.index("ROCE %") if "ROCE %" in METRIC_COLS else 1,
+        key="sc_y",
+    )
 
     sc_data = sdf[["Company", x_ax, y_ax]].dropna()
-    fig_s   = px.scatter(sc_data, x=x_ax, y=y_ax, text="Company",
-                         hover_data=["Company"])
-    fig_s.update_traces(textposition="top center", marker_size=9)
-    fig_s.update_layout(height=520)
+    fig_s   = px.scatter(
+        sc_data, x=x_ax, y=y_ax, text="Company",
+        hover_name="Company",
+        hover_data={x_ax: ":.1f", y_ax: ":.1f", "Company": False},
+    )
+    fig_s.update_traces(
+        textposition="top center", marker_size=9,
+        marker_color=BLUE,
+    )
+    fig_s.update_layout(
+        height=520,
+        plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+        hovermode="closest",
+        xaxis=dict(showgrid=True, gridcolor="rgba(128,128,128,0.10)",
+                   zeroline=False, title=x_ax, tickfont_size=11),
+        yaxis=dict(showgrid=True, gridcolor="rgba(128,128,128,0.10)",
+                   zeroline=False, title=y_ax, tickfont_size=11),
+        hoverlabel=dict(bgcolor="rgba(15,22,32,0.92)", font_size=12,
+                        bordercolor="rgba(255,255,255,0.10)"),
+        margin=dict(t=20, b=40, l=60, r=10),
+    )
     st.plotly_chart(fig_s, use_container_width=True)
