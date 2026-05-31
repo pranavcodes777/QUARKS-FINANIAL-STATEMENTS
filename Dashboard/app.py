@@ -64,6 +64,29 @@ NAMES = {
     "MOTHERSON":    "Samvardhana Motherson","PAGEIND":      "Page Industries",
 }
 
+SECTORS = {
+    "Banks":               ["AXISBANK","HDFCBANK","ICICIBANK","INDUSINDBK","KOTAKBANK","SBIN","BANDHANBNK"],
+    "Financial Services":  ["BAJFINANCE","BAJAJFINSV","CHOLAFIN","MUTHOOTFIN","SBICARD","SHRIRAMFIN"],
+    "Insurance":           ["HDFCLIFE","ICICIPRULI","SBILIFE","LICI"],
+    "IT & Technology":     ["TCS","INFY","WIPRO","HCLTECH","TECHM","PERSISTENT","OFSS","NAUKRI"],
+    "Oil & Gas":           ["RELIANCE","BPCL","ONGC","GAIL"],
+    "Auto":                ["MARUTI","TATAMOTORS","M&M","BAJAJ-AUTO","HEROMOTOCO","EICHERMOT","TVSMOTOR","MOTHERSON"],
+    "FMCG":                ["HINDUNILVR","ITC","NESTLEIND","BRITANNIA","DABUR","GODREJCP","MARICO","COLPAL","VBL","TATACONSUMER"],
+    "Pharma & Healthcare": ["SUNPHARMA","CIPLA","DRREDDY","DIVISLAB","LUPIN","APOLLOHOSP","AUROPHARMA","ZYDUSLIFE","TORNTPHARM"],
+    "Metals & Mining":     ["TATASTEEL","JSWSTEEL","HINDALCO","COALINDIA","JINDALSTEL"],
+    "Cement & Materials":  ["ULTRACEMCO","AMBUJACEM","GRASIM"],
+    "Capital Goods":       ["LT","SIEMENS","BEL","CGPOWER","BOSCHLTD","HAVELLS","POLYCAB"],
+    "Consumer Durables":   ["TITAN","PAGEIND","ASIANPAINT","BERGEPAINT","PIDILITIND"],
+    "Energy & Power":      ["NTPC","POWERGRID","ADANIGREEN","ADANIENSOL"],
+    "Telecom & Infra":     ["BHARTIARTL","INDUSTOWER","ADANIPORTS"],
+    "Retail & Hospitality":["TRENT","DMART","IRCTC","INDHOTEL","ZOMATO"],
+    "Chemicals":           ["SRF"],
+    "Conglomerates":       ["ADANIENT"],
+}
+
+# reverse map: ticker -> sector
+SECTOR_OF = {t: s for s, tickers in SECTORS.items() for t in tickers}
+
 BLUE   = "#4C9BE8"
 GREEN  = "#27AE60"
 RED    = "#E74C3C"
@@ -144,7 +167,7 @@ def company_data(ticker: str) -> dict:
 def screener_df() -> pd.DataFrame:
     rows = []
     for t in COMPANIES:
-        r: dict = {"Ticker": t, "Company": NAMES.get(t, t)}
+        r: dict = {"Ticker": t, "Company": NAMES.get(t, t), "Sector": SECTOR_OF.get(t, "Other")}
         try:
             apl = to_df(t, "annual_pl")
             if apl is not None:
@@ -234,13 +257,25 @@ def _style(fig, *, yt="", yt2="", height=400, legend=True, barmode=None):
 
 with st.sidebar:
     st.title("Indian Equity Fundamentals")
+
+    sector_options = ["All Sectors"] + sorted(SECTORS.keys())
+    selected_sector = st.selectbox("Sector", sector_options)
+
+    if selected_sector == "All Sectors":
+        filtered = COMPANIES
+    else:
+        filtered = [c for c in COMPANIES if c in SECTORS.get(selected_sector, [])]
+        if not filtered:
+            filtered = COMPANIES
+
+    default_idx = filtered.index("RELIANCE") if "RELIANCE" in filtered else 0
     ticker = st.selectbox(
-        "Select Company",
-        COMPANIES,
+        "Company",
+        filtered,
         format_func=lambda x: f"{x}  —  {NAMES.get(x, x)}",
-        index=COMPANIES.index("RELIANCE") if "RELIANCE" in COMPANIES else 0,
+        index=default_idx,
     )
-    st.caption(f"Screener.in  |  {len(COMPANIES)} companies  |  Nifty 100")
+    st.caption(f"Screener.in  |  {len(COMPANIES)} companies")
 
 D    = company_data(ticker)
 name = NAMES.get(ticker, ticker)
@@ -818,10 +853,10 @@ with tabs[5]:
             st.plotly_chart(fig4, use_container_width=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# TAB 7 — SENSEX SCREENER
+# TAB 7 — SCREENER
 # ═══════════════════════════════════════════════════════════════════════════════
 with tabs[6]:
-    st.header("Sensex 30 — Screener")
+    st.header("Screener")
 
     with st.spinner("Loading all companies..."):
         sdf = screener_df()
@@ -832,23 +867,33 @@ with tabs[6]:
         "Price CAGR 3Y (%)", "ROE (last yr)",
     ] if c in sdf.columns]
 
-    st.subheader("All Companies")
-    col_sort, col_asc = st.columns([3, 1])
-    sort_by = col_sort.selectbox("Sort by", METRIC_COLS)
-    asc     = col_asc.checkbox("Ascending", value=False)
+    # ── Filters row
+    f1, f2, f3 = st.columns([2, 2, 1])
+    scr_sector = f1.selectbox(
+        "Sector", ["All Sectors"] + sorted(SECTORS.keys()), key="scr_sector"
+    )
+    sort_by = f2.selectbox("Sort by", METRIC_COLS, key="scr_sort")
+    asc     = f3.checkbox("Ascending", value=False, key="scr_asc")
 
-    display = sdf.sort_values(sort_by, ascending=asc).reset_index(drop=True)
+    display = sdf.copy()
+    if scr_sector != "All Sectors":
+        display = display[display["Sector"] == scr_sector]
+    display = display.sort_values(sort_by, ascending=asc).reset_index(drop=True)
+
     st.dataframe(
-        display[["Company", "Ticker"] + METRIC_COLS],
-        use_container_width=True, height=560, hide_index=True,
+        display[["Company", "Ticker", "Sector"] + METRIC_COLS],
+        use_container_width=True, height=520, hide_index=True,
     )
 
     st.divider()
 
-    # Bar comparison
-    metric_bar = st.selectbox("Compare by", METRIC_COLS, key="bar_metric")
-    bar_data   = sdf[["Company", metric_bar]].dropna().sort_values(metric_bar)
+    # ── Bar comparison (filtered to selected sector)
+    bar_label = f"{scr_sector}" if scr_sector != "All Sectors" else "All Companies"
+    st.subheader(f"Compare — {bar_label}")
+    metric_bar = st.selectbox("Metric", METRIC_COLS, key="bar_metric")
+    bar_data   = display[["Company", metric_bar]].dropna().sort_values(metric_bar)
     bar_colors = [GREEN if v >= 0 else RED for v in bar_data[metric_bar]]
+    bar_h      = max(300, len(bar_data) * 28)
 
     fig_b = go.Figure(go.Bar(
         x=bar_data[metric_bar],
@@ -858,7 +903,7 @@ with tabs[6]:
         hovertemplate="%{y}  —  %{x:.1f}<extra></extra>",
     ))
     fig_b.update_layout(
-        height=700,
+        height=bar_h,
         plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
         hovermode="closest",
         margin=dict(l=180, t=10, b=30, r=10),
@@ -872,8 +917,8 @@ with tabs[6]:
 
     st.divider()
 
-    # Scatter
-    st.subheader("Scatter — Growth vs Returns")
+    # ── Scatter
+    st.subheader("Scatter")
     s1, s2 = st.columns(2)
     x_ax = s1.selectbox(
         "X axis", METRIC_COLS,
@@ -886,16 +931,16 @@ with tabs[6]:
         key="sc_y",
     )
 
-    sc_data = sdf[["Company", x_ax, y_ax]].dropna()
+    sc_data = display[["Company", "Sector", x_ax, y_ax]].dropna()
     fig_s   = px.scatter(
         sc_data, x=x_ax, y=y_ax, text="Company",
+        color="Sector" if scr_sector == "All Sectors" else None,
         hover_name="Company",
         hover_data={x_ax: ":.1f", y_ax: ":.1f", "Company": False},
     )
-    fig_s.update_traces(
-        textposition="top center", marker_size=9,
-        marker_color=BLUE,
-    )
+    if scr_sector != "All Sectors":
+        fig_s.update_traces(marker_color=BLUE)
+    fig_s.update_traces(textposition="top center", marker_size=9)
     fig_s.update_layout(
         height=520,
         plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
