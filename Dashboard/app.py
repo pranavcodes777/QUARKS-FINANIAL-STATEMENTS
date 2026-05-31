@@ -13,21 +13,55 @@ DB = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "
 COMPANIES = sorted([d for d in os.listdir(DB) if os.path.isdir(os.path.join(DB, d))])
 
 NAMES = {
-    "ADANIPORTS": "Adani Ports",       "ASIANPAINT": "Asian Paints",
-    "AXISBANK": "Axis Bank",           "BAJFINANCE": "Bajaj Finance",
-    "BAJAJFINSV": "Bajaj Finserv",     "BHARTIARTL": "Bharti Airtel",
-    "HCLTECH": "HCL Technologies",     "HDFCBANK": "HDFC Bank",
-    "HINDUNILVR": "Hindustan Unilever","ICICIBANK": "ICICI Bank",
-    "INDUSINDBK": "IndusInd Bank",     "INFY": "Infosys",
-    "ITC": "ITC",                      "JSWSTEEL": "JSW Steel",
-    "KOTAKBANK": "Kotak Mahindra Bank","LT": "Larsen & Toubro",
-    "M&M": "Mahindra & Mahindra",      "MARUTI": "Maruti Suzuki",
-    "NTPC": "NTPC",                    "POWERGRID": "Power Grid",
-    "RELIANCE": "Reliance Industries", "SBIN": "State Bank of India",
-    "SUNPHARMA": "Sun Pharma",         "TCS": "TCS",
-    "TATAMOTORS": "Tata Motors",       "TATASTEEL": "Tata Steel",
-    "TECHM": "Tech Mahindra",          "TITAN": "Titan",
-    "ULTRACEMCO": "UltraTech Cement",  "WIPRO": "Wipro",
+    # Sensex 30
+    "ADANIPORTS":   "Adani Ports",          "ASIANPAINT":   "Asian Paints",
+    "AXISBANK":     "Axis Bank",            "BAJFINANCE":   "Bajaj Finance",
+    "BAJAJFINSV":   "Bajaj Finserv",        "BHARTIARTL":   "Bharti Airtel",
+    "HCLTECH":      "HCL Technologies",     "HDFCBANK":     "HDFC Bank",
+    "HINDUNILVR":   "Hindustan Unilever",   "ICICIBANK":    "ICICI Bank",
+    "INDUSINDBK":   "IndusInd Bank",        "INFY":         "Infosys",
+    "ITC":          "ITC",                  "JSWSTEEL":     "JSW Steel",
+    "KOTAKBANK":    "Kotak Mahindra Bank",  "LT":           "Larsen & Toubro",
+    "M&M":          "Mahindra & Mahindra",  "MARUTI":       "Maruti Suzuki",
+    "NTPC":         "NTPC",                 "POWERGRID":    "Power Grid",
+    "RELIANCE":     "Reliance Industries",  "SBIN":         "State Bank of India",
+    "SUNPHARMA":    "Sun Pharma",           "TCS":          "TCS",
+    "TATAMOTORS":   "Tata Motors",          "TATASTEEL":    "Tata Steel",
+    "TECHM":        "Tech Mahindra",        "TITAN":        "Titan",
+    "ULTRACEMCO":   "UltraTech Cement",     "WIPRO":        "Wipro",
+    # Nifty 50 additions
+    "ADANIENT":     "Adani Enterprises",    "APOLLOHOSP":   "Apollo Hospitals",
+    "BAJAJ-AUTO":   "Bajaj Auto",           "BPCL":         "BPCL",
+    "BRITANNIA":    "Britannia",            "CIPLA":        "Cipla",
+    "COALINDIA":    "Coal India",           "DIVISLAB":     "Divi's Laboratories",
+    "DRREDDY":      "Dr. Reddy's",          "EICHERMOT":    "Eicher Motors",
+    "GRASIM":       "Grasim Industries",    "HDFCLIFE":     "HDFC Life",
+    "HEROMOTOCO":   "Hero MotoCorp",        "HINDALCO":     "Hindalco",
+    "NESTLEIND":    "Nestle India",         "ONGC":         "ONGC",
+    "SBILIFE":      "SBI Life Insurance",   "SHRIRAMFIN":   "Shriram Finance",
+    "TATACONSUMER": "Tata Consumer",        "TRENT":        "Trent",
+    "ADANIGREEN":   "Adani Green Energy",
+    # Nifty Next 50
+    "AMBUJACEM":    "Ambuja Cements",       "AUROPHARMA":   "Aurobindo Pharma",
+    "BANDHANBNK":   "Bandhan Bank",         "BERGEPAINT":   "Berger Paints",
+    "BEL":          "Bharat Electronics",   "CHOLAFIN":     "Cholamandalam Finance",
+    "COLPAL":       "Colgate-Palmolive",    "DABUR":        "Dabur India",
+    "DLF":          "DLF",                  "GAIL":         "GAIL India",
+    "GODREJCP":     "Godrej Consumer",      "HAVELLS":      "Havells India",
+    "ICICIPRULI":   "ICICI Pru Life",       "INDUSTOWER":   "Indus Towers",
+    "IRCTC":        "IRCTC",                "JINDALSTEL":   "Jindal Steel",
+    "LICI":         "LIC of India",         "LUPIN":        "Lupin",
+    "MUTHOOTFIN":   "Muthoot Finance",      "NAUKRI":       "Info Edge (Naukri)",
+    "OFSS":         "Oracle Financial",     "PERSISTENT":   "Persistent Systems",
+    "PIDILITIND":   "Pidilite Industries",  "SBICARD":      "SBI Cards",
+    "SIEMENS":      "Siemens India",        "SRF":          "SRF",
+    "TORNTPHARM":   "Torrent Pharma",       "TVSMOTOR":     "TVS Motor",
+    "VBL":          "Varun Beverages",      "ZOMATO":       "Zomato (Eternal)",
+    "ZYDUSLIFE":    "Zydus Life",           "ADANIENSOL":   "Adani Energy Solutions",
+    "DMART":        "DMart",                "MARICO":       "Marico",
+    "INDHOTEL":     "Indian Hotels (Taj)",  "BOSCHLTD":     "Bosch India",
+    "CGPOWER":      "CG Power",             "POLYCAB":      "Polycab India",
+    "MOTHERSON":    "Samvardhana Motherson","PAGEIND":      "Page Industries",
 }
 
 BLUE   = "#4C9BE8"
@@ -199,14 +233,14 @@ def _style(fig, *, yt="", yt2="", height=400, legend=True, barmode=None):
 # ── SIDEBAR ───────────────────────────────────────────────────────────────────
 
 with st.sidebar:
-    st.title("Sensex Fundamentals")
+    st.title("Indian Equity Fundamentals")
     ticker = st.selectbox(
         "Select Company",
         COMPANIES,
         format_func=lambda x: f"{x}  —  {NAMES.get(x, x)}",
         index=COMPANIES.index("RELIANCE") if "RELIANCE" in COMPANIES else 0,
     )
-    st.caption(f"Screener.in  |  {len(COMPANIES)} companies")
+    st.caption(f"Screener.in  |  {len(COMPANIES)} companies  |  Nifty 100")
 
 D    = company_data(ticker)
 name = NAMES.get(ticker, ticker)
