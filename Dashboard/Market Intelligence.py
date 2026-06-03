@@ -525,15 +525,18 @@ with tab_rs:
         # ── Controls ───────────────────────────────────────────────
         r1, r2, r3 = st.columns([2, 2, 2])
         rs_sector  = r1.selectbox("Sector filter", ["All Sectors"] + sorted(SECTORS.keys()), key="rs_sec")
-        rs_sort_by = r2.selectbox("Sort within sector by", ["1M", "3M", "6M", "1Y", "1W"], key="rs_sort")
+        _sort_opts = ["Custom"] if use_custom_rs else ["1M", "3M", "6M", "1Y", "1W"]
+        rs_sort_by = r2.selectbox("Sort within sector by", _sort_opts, key="rs_sort")
         show_n     = r3.slider("Max companies shown", 20, len(rs_df), min(60, len(rs_df)), key="rs_n")
 
         display_rs = rs_df.copy()
         if rs_sector != "All Sectors":
             display_rs = display_rs[display_rs["Sector"] == rs_sector]
 
+        _sort_col  = "Custom" if use_custom_rs else rs_sort_by
+        _sort_col  = _sort_col if _sort_col in display_rs.columns else display_rs.columns[-1]
         display_rs = (display_rs
-                      .sort_values(["Sector", rs_sort_by], ascending=[True, False])
+                      .sort_values(["Sector", _sort_col], ascending=[True, False])
                       .head(show_n)
                       .reset_index(drop=True))
 
