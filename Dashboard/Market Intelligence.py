@@ -195,6 +195,28 @@ def screener_df() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _rs_custom(date_range: tuple) -> pd.DataFrame:
+    start, end = date_range
+    rows = []
+    for ticker in COMPANIES:
+        path = os.path.join(OHLCV_DIR, f"{ticker}.parquet")
+        if not os.path.exists(path):
+            continue
+        try:
+            df = pd.read_parquet(path)
+            df.index = pd.to_datetime(df.index)
+            close = df["Close"].dropna().sort_index()
+            seg   = close[(close.index >= start) & (close.index <= end)]
+            if len(seg) < 2:
+                continue
+            ret = round((seg.iloc[-1] - seg.iloc[0]) / seg.iloc[0] * 100, 1)
+            rows.append({"Ticker": ticker, "Company": NAMES.get(ticker, ticker),
+                         "Sector": SECTOR_OF.get(ticker, "Other"), "Custom": ret})
+        except Exception:
+            continue
+    return pd.DataFrame(rows)
+
+
 @st.cache_data(ttl=3600)
 def relative_strength_df() -> pd.DataFrame:
     periods = {"1W": 5, "1M": 21, "3M": 63, "6M": 126, "1Y": 252}
@@ -487,8 +509,15 @@ with tab_peer:
 with tab_rs:
     st.subheader("Relative Strength  —  Price Return Heatmap")
 
+    use_custom_rs = st.toggle("Use custom date range", value=False, key="rs_custom_toggle")
+    if use_custom_rs:
+        rx1, rx2 = st.columns(2)
+        today    = pd.Timestamp.today().normalize()
+        rs_start = rx1.date_input("From", value=(today - pd.Timedelta(days=365)).date(), key="rs_date_start")
+        rs_end   = rx2.date_input("To",   value=today.date(), key="rs_date_end")
+        rs_range = (pd.Timestamp(rs_start), pd.Timestamp(rs_end))
     with st.spinner("Calculating returns across all tickers..."):
-        rs_df = relative_strength_df()
+        rs_df = _rs_custom(rs_range) if use_custom_rs else relative_strength_df()
 
     if rs_df.empty:
         st.warning("No OHLCV data found. Run fetch_ohlcv.py first.")
@@ -510,7 +539,7 @@ with tab_rs:
 
         period_cols = [c for c in ["1W", "1M", "3M", "6M", "1Y"] if c in display_rs.columns]
         heat_data   = display_rs[period_cols].values
-        y_labels    = display_rs["Ticker"] + " (" + display_rs["Sector"].str[:8] + ")"
+        y_labels    = display_rs["Ticker"] + "  |  " + display_rs["Sector"]
 
         # Max abs value for symmetric colorscale
         abs_max = max(np.nanmax(np.abs(heat_data)), 1)
@@ -520,29 +549,29 @@ with tab_rs:
             x=period_cols,
             y=y_labels,
             colorscale=[
-                [0.0, "rgba(192,57,43,0.9)"],
-                [0.35, "rgba(231,76,60,0.5)"],
-                [0.5, "rgba(40,40,40,0.2)"],
-                [0.65, "rgba(39,174,96,0.5)"],
-                [1.0, "rgba(30,132,73,0.9)"],
+                [0.0,  "#b22222"],
+                [0.35, "#cd6a6a"],
+                [0.5,  "#2a2a2a"],
+                [0.65, "#5aad7e"],
+                [1.0,  "#1a7a45"],
             ],
             zmid=0,
             zmin=-abs_max,
             zmax=abs_max,
             text=[[f"{v:+.1f}%" if not np.isnan(v) else "—" for v in row] for row in heat_data],
             texttemplate="%{text}",
-            textfont=dict(size=10),
+            textfont=dict(size=10, color="white"),
             hovertemplate="<b>%{y}</b><br>Period: %{x}<br>Return: %{text}<extra></extra>",
             showscale=True,
-            colorbar=dict(title="Return %", tickfont=dict(size=10)),
+            colorbar=dict(title="Return %", tickfont=dict(size=10, color="white"), titlefont=dict(color="white")),
         ))
         fig_heat.update_layout(
             height=max(400, len(display_rs) * 24 + 80),
             plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-            margin=dict(l=160, t=40, b=40, r=80),
-            xaxis=dict(side="top", tickfont=dict(size=12)),
-            yaxis=dict(tickfont=dict(size=10), autorange="reversed"),
-            font=dict(family="Inter, sans-serif", size=12),
+            margin=dict(l=220, t=50, b=40, r=100),
+            xaxis=dict(side="top", tickfont=dict(size=12, color="white")),
+            yaxis=dict(tickfont=dict(size=10, color="white"), autorange="reversed"),
+            font=dict(family="Inter, sans-serif", size=12, color="white"),
         )
         st.plotly_chart(fig_heat, use_container_width=True, config=CHART_CFG, key="rs_heat")
 
@@ -645,16 +674,16 @@ with tab_sec:
         x=FUND_METRICS,
         y=heat_sec.index.tolist(),
         colorscale=[
-            [0.0, "rgba(192,57,43,0.9)"],
-            [0.4, "rgba(231,76,60,0.4)"],
-            [0.5, "rgba(40,40,40,0.15)"],
-            [0.6, "rgba(39,174,96,0.4)"],
-            [1.0, "rgba(30,132,73,0.9)"],
+            [0.0,  "#b22222"],
+            [0.35, "#cd6a6a"],
+            [0.5,  "#2a2a2a"],
+            [0.65, "#5aad7e"],
+            [1.0,  "#1a7a45"],
         ],
         zmid=np.nanmedian(z_vals),
         text=[[f"{v:.1f}" if not np.isnan(v) else "—" for v in row] for row in z_vals],
         texttemplate="%{text}",
-        textfont=dict(size=10),
+        textfont=dict(size=10, color="white"),
         hovertemplate="<b>%{y}</b><br>%{x}: %{text}<extra></extra>",
         showscale=True,
         colorbar=dict(title="Value", tickfont=dict(size=10)),

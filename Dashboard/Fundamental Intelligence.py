@@ -106,7 +106,8 @@ TEAL   = "#1ABC9C"
 
 PERIOD_MAP = {"1M": 30, "3M": 90, "6M": 180, "1Y": 365, "3Y": 1095, "5Y": 1825, "Max": 99999}
 
-CHART_CFG = dict(displaylogo=False, modeBarButtonsToRemove=["lasso2d", "select2d"], displayModeBar=True)
+CHART_CFG      = dict(displaylogo=False, modeBarButtonsToRemove=["lasso2d","select2d"])
+CHART_CFG_MINI = dict(displaylogo=False, displayModeBar=False)  # small sparkline charts
 
 st.set_page_config(page_title="Fundamental Intelligence", layout="wide", initial_sidebar_state="expanded")
 
@@ -340,11 +341,28 @@ with tab_snap:
 
     # ── Price Chart ────────────────────────────────────────────────
     if ohlcv is not None:
-        period_key = st.radio("Period", list(PERIOD_MAP.keys()), index=3,
-                              horizontal=True, key="snap_period")
-        days  = PERIOD_MAP[period_key]
-        cut   = ohlcv.index[-1] - pd.Timedelta(days=days)
-        px_df = ohlcv[ohlcv.index >= cut].copy()
+        p_col1, p_col2 = st.columns([3, 2])
+        period_key = p_col1.radio("Period", list(PERIOD_MAP.keys()) + ["Custom"], index=3,
+                                  horizontal=True, key="snap_period")
+        if period_key == "Custom":
+            date_range = p_col2.date_input(
+                "Date range",
+                value=(ohlcv.index[-1] - pd.Timedelta(days=365), ohlcv.index[-1].date()),
+                min_value=ohlcv.index[0].date(),
+                max_value=ohlcv.index[-1].date(),
+                key="snap_custom_range",
+            )
+            if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
+                cut = pd.Timestamp(date_range[0])
+                end = pd.Timestamp(date_range[1])
+            else:
+                cut = ohlcv.index[-1] - pd.Timedelta(days=365)
+                end = ohlcv.index[-1]
+            px_df = ohlcv[(ohlcv.index >= cut) & (ohlcv.index <= end)].copy()
+        else:
+            days  = PERIOD_MAP[period_key]
+            cut   = ohlcv.index[-1] - pd.Timedelta(days=days)
+            px_df = ohlcv[ohlcv.index >= cut].copy()
 
         # Moving averages
         px_df["MA20"]  = px_df["Close"].rolling(20).mean()
@@ -509,7 +527,7 @@ with tab_snap:
                     _style(fig, height=230, legend=False, spike=False)
                     fig.update_layout(title=dict(text=title, font_size=13), margin=dict(t=36, b=20))
                     col_obj.plotly_chart(fig, use_container_width=True, config=CHART_CFG,
-                                         key=f"snap_spark_{key_sfx}")
+                                         key=f"snap_spark_{key_sfx}", config=CHART_CFG_MINI)
             if rat is not None and "ROCE %" in rat.columns:
                 fig_r = go.Figure(go.Scatter(
                     x=rat.index, y=rat["ROCE %"], mode="lines+markers",
@@ -519,7 +537,7 @@ with tab_snap:
                 ))
                 _style(fig_r, yt="ROCE %", height=230, legend=False, spike=False)
                 fig_r.update_layout(title=dict(text="ROCE %", font_size=13), margin=dict(t=36, b=20))
-                s3.plotly_chart(fig_r, use_container_width=True, config=CHART_CFG, key="snap_spark_roce")
+                s3.plotly_chart(fig_r, use_container_width=True, config=CHART_CFG, key="snap_spark_roce", config=CHART_CFG_MINI)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -822,11 +840,16 @@ with tab_qual:
                             line=dict(color=color, width=2), marker=dict(size=5),
                             hovertemplate="%{y:.2f}<extra></extra>",
                         ))
-                        _style(fig_d, height=220, legend=False, spike=False)
-                        fig_d.update_layout(title=dict(text=col_lbl, font_size=12),
-                                            margin=dict(t=36, b=20))
+                        _style(fig_d, height=230, legend=False, spike=False)
+                        fig_d.update_layout(
+                            title=dict(text=col_lbl, font_size=12),
+                            margin=dict(t=32, b=64, l=8, r=8),
+                            xaxis=dict(tickangle=-45, tickfont=dict(size=9),
+                                       showgrid=False, zeroline=False, showline=True,
+                                       linecolor="rgba(128,128,128,0.2)"),
+                        )
                         d_cols[i].plotly_chart(fig_d, use_container_width=True,
-                                               config=CHART_CFG, key=f"qual_dupont_{i}")
+                                               config=CHART_CFG_MINI, key=f"qual_dupont_{i}")
             except Exception:
                 st.caption("DuPont data unavailable for this company.")
 
