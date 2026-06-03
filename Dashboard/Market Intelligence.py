@@ -537,14 +537,18 @@ with tab_rs:
                       .head(show_n)
                       .reset_index(drop=True))
 
-        period_cols = [c for c in ["1W", "1M", "3M", "6M", "1Y"] if c in display_rs.columns]
+        period_cols = [c for c in ["Custom", "1W", "1M", "3M", "6M", "1Y"] if c in display_rs.columns]
         heat_data   = display_rs[period_cols].values
         y_labels    = display_rs["Ticker"] + "  |  " + display_rs["Sector"]
 
-        # Max abs value for symmetric colorscale
-        abs_max = max(np.nanmax(np.abs(heat_data)), 1)
+        # Guard: nothing to show
+        if heat_data.size == 0:
+            st.info("No return data for the selected filter / date range.")
+        else:
+          _abs = float(np.nanmax(np.abs(heat_data[~np.isnan(heat_data)]))) if not np.all(np.isnan(heat_data)) else 1.0
+          abs_max = max(_abs, 1)
 
-        fig_heat = go.Figure(go.Heatmap(
+          fig_heat = go.Figure(go.Heatmap(
             z=heat_data,
             x=period_cols,
             y=y_labels,
@@ -563,7 +567,7 @@ with tab_rs:
             textfont=dict(size=10, color="white"),
             hovertemplate="<b>%{y}</b><br>Period: %{x}<br>Return: %{text}<extra></extra>",
             showscale=True,
-            colorbar=dict(title="Return %", tickfont=dict(size=10, color="white"), titlefont=dict(color="white")),
+            colorbar=dict(title=dict(text="Return %", font=dict(color="white", size=11)), tickfont=dict(size=10, color="white")),
         ))
         fig_heat.update_layout(
             height=max(400, len(display_rs) * 24 + 80),

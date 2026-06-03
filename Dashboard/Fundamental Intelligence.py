@@ -526,8 +526,8 @@ with tab_snap:
                     ))
                     _style(fig, height=230, legend=False, spike=False)
                     fig.update_layout(title=dict(text=title, font_size=13), margin=dict(t=36, b=20))
-                    col_obj.plotly_chart(fig, use_container_width=True, config=CHART_CFG,
-                                         key=f"snap_spark_{key_sfx}", config=CHART_CFG_MINI)
+                    col_obj.plotly_chart(fig, use_container_width=True, config=CHART_CFG_MINI,
+                                         key=f"snap_spark_{key_sfx}")
             if rat is not None and "ROCE %" in rat.columns:
                 fig_r = go.Figure(go.Scatter(
                     x=rat.index, y=rat["ROCE %"], mode="lines+markers",
@@ -537,7 +537,7 @@ with tab_snap:
                 ))
                 _style(fig_r, yt="ROCE %", height=230, legend=False, spike=False)
                 fig_r.update_layout(title=dict(text="ROCE %", font_size=13), margin=dict(t=36, b=20))
-                s3.plotly_chart(fig_r, use_container_width=True, config=CHART_CFG, key="snap_spark_roce", config=CHART_CFG_MINI)
+                s3.plotly_chart(fig_r, use_container_width=True, config=CHART_CFG_MINI, key="snap_spark_roce")
 
 
 # ═══════════════════════════════════════════════════════════════════
