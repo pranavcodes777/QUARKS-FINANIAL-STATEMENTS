@@ -104,6 +104,8 @@ PURPLE = "#8E44AD"
 GREY   = "#7F8C8D"
 TEAL   = "#1ABC9C"
 
+CHART_CFG = dict(displaylogo=False, modeBarButtonsToRemove=["lasso2d", "select2d"], displayModeBar=True)
+
 st.set_page_config(
     page_title="Market Intelligence",
     layout="wide",
@@ -347,7 +349,7 @@ with tab_scr:
             hoverlabel=dict(bgcolor="rgba(15,22,32,0.92)", font_size=12,
                             bordercolor="rgba(255,255,255,0.10)"),
         )
-        st.plotly_chart(fig_b, use_container_width=True)
+        st.plotly_chart(fig_b, use_container_width=True, config=CHART_CFG, key="scr_bar")
 
     # ── Scatter ────────────────────────────────────────────────────
     with st.expander("Scatter Plot"):
@@ -379,7 +381,7 @@ with tab_scr:
                             bordercolor="rgba(255,255,255,0.10)"),
             margin=dict(t=20, b=40, l=60, r=10),
         )
-        st.plotly_chart(fig_s, use_container_width=True)
+        st.plotly_chart(fig_s, use_container_width=True, config=CHART_CFG, key="scr_scatter")
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -431,7 +433,7 @@ with tab_peer:
                     text=f"Relative Price Performance (normalised, last {peer_period})",
                     font_size=14,
                 ))
-                st.plotly_chart(fig_norm, use_container_width=True)
+                st.plotly_chart(fig_norm, use_container_width=True, config=CHART_CFG, key="peer_norm")
 
                 # Returns table
                 if not norm_df.empty:
@@ -470,7 +472,7 @@ with tab_peer:
                 hoverlabel=dict(bgcolor="rgba(15,22,32,0.92)", font_size=12,
                                 bordercolor="rgba(255,255,255,0.10)"),
             )
-            st.plotly_chart(fig_pb, use_container_width=True)
+            st.plotly_chart(fig_pb, use_container_width=True, config=CHART_CFG, key="peer_bar")
 
             # All metrics table
             with st.expander("Full Metrics Table"):
@@ -542,7 +544,7 @@ with tab_rs:
             yaxis=dict(tickfont=dict(size=10), autorange="reversed"),
             font=dict(family="Inter, sans-serif", size=12),
         )
-        st.plotly_chart(fig_heat, use_container_width=True)
+        st.plotly_chart(fig_heat, use_container_width=True, config=CHART_CFG, key="rs_heat")
 
         # ── Top / Bottom movers ────────────────────────────────────
         with st.expander("Top & Bottom Movers"):
@@ -629,7 +631,7 @@ with tab_sec:
                         bordercolor="rgba(255,255,255,0.10)"),
         font=dict(family="Inter, sans-serif", size=12),
     )
-    st.plotly_chart(fig_sv, use_container_width=True)
+    st.plotly_chart(fig_sv, use_container_width=True, config=CHART_CFG, key="sec_bar")
 
     st.divider()
 
@@ -665,7 +667,7 @@ with tab_sec:
         yaxis=dict(tickfont=dict(size=11), autorange="reversed"),
         font=dict(family="Inter, sans-serif", size=12),
     )
-    st.plotly_chart(fig_sh, use_container_width=True)
+    st.plotly_chart(fig_sh, use_container_width=True, config=CHART_CFG, key="sec_heat")
 
     # ── Drill into one sector ──────────────────────────────────────
     with st.expander("Drill into a Sector"):
